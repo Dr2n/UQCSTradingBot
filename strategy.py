@@ -39,7 +39,7 @@ class Strategy():
 
         ## Print market data
         
-        print(f'{self.timestamp} OPEN: {self.open} HIGH: {self.high} LOW: {self.low} CLOSE: {self.close}')
+        print(f'{self.timestamp} OPEN: {self.open} HIGH: {self.high} LOW: {self.low} CLOSE: {self.close}') 
 
         ohlcv_candles.set_index(['timestamp'], inplace=True)
 

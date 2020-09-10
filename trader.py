@@ -9,29 +9,46 @@ class Trader():
 
         self.money_to_trade = money_to_trade
         self.leverage = leverage
+
         self.open_position = False
         self.symbol = symbol
+        self.position = self.client.Position.Position_get(filter=json.dumps({"symbol": self.symbol})).result()[0][0]
+        self.open_position = self.position["isOpen"]
+        self.exposure = self.position["currentQty"]
 
     def execute_trade(self):
         
         prediction = self.strategy.predict()
-        
+        self.position = self.client.Position.Position_get(filter=json.dumps({"symbol": self.symbol})).result()[0][0]
+        self.open_position = self.position["isOpen"]
+        self.exposure = self.position["currentQty"]
+
         if self.open_position: 
             print ("{:<20} | {:<15}".format('Param','Value'))
             print ("-"*38)
             for k, v in self.get_postion().items():
                 print ("{:<20}   {:<15}".format(k, v))
 
-            # Check if Long or Short
+            
             # Check to hack
+            
             # Check trade exit
+
+            if prediction == -1:
+                if self.exposure > 0: # already long
+                    self.close_position() # exit position
+                # else hold as already short
+            if prediction == 1:
+                if self.exposure < 0:
+                    self.close_position() # exit position
+                # else hold as already long
         
         else:
             print("NO POSITIONS OPEN")
 
-            if prediction == -1:
+            if prediction == -1: # go short
                 self.exec_trade(side="Sell")
-            if prediction == 1:
+            if prediction == 1: # go long
                 self.exec_trade(side="Buy")
             
         
@@ -41,7 +58,7 @@ class Trader():
     def get_postion(self):
         satosh = 100000000
 
-        positions = self.client.Position.Position_get(filter=json.dumps({"symbol": self.symbol})).result()[0][0]
+        positions = self.position
 
         processed_position = {}
         timestamp_minute = str(positions["openingTimestamp"]).split(':')[0] + ":" + \
@@ -63,12 +80,12 @@ class Trader():
         processed_position["futROE"] = str(positions["unrealisedRoePcnt"] * 100) + "%"
         processed_position["markPNL"] = ((1 / positions["avgEntryPrice"])-(1 / self.strategy.close)) * positions["currentQty"]
         processed_position["markROE"] = str((processed_position["markPNL"] / processed_position["margin"])*100) + "%"
-
         return processed_position
 
     
     def close_position(self):
         res = self.client.Order.Order_closePosition(symbol=self.symbol).result()
+        self.open_position = False
         # TODO CHECK position is closed
 
     def exec_trade(self, side):
@@ -81,6 +98,7 @@ class Trader():
                         side=side,
                         orderQty=self.money_to_trade * self.leverage,
                     ).result()
+            self.open_position = True
         except Exception:
                     print("Order error!")
 
