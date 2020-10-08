@@ -3,7 +3,13 @@ import pandas as pd
 
 
 class Strategy():
-    def __init__(self, client, timeframe='5m'):
+    params = {
+            "period": 200,
+            "devfactor": 1,
+            "size": 0.5,
+            "debug": False
+            }
+    def __init__(self, client, timeframe='1m'):
         self.client = client
         self.timeframe = timeframe
         self.open = 0
@@ -17,16 +23,10 @@ class Strategy():
         ohlcv_candles = pd.DataFrame(self.client.Trade.Trade_getBucketed(
             binSize=self.timeframe,
             symbol='XBTUSD',
-            count=100,
+            count=300,
             reverse=True
         ).result()[0])
-
-        ohlcv_candles_BXBT = pd.DataFrame(self.client.Trade.Trade_getBucketed(
-            binSize=self.timeframe,
-            symbol='.BXBT',
-            count=100,
-            reverse=True
-        ).result()[0])
+        
         row = ohlcv_candles.iloc[0]
 
         self.open = row["open"]
@@ -43,14 +43,18 @@ class Strategy():
 
         ohlcv_candles.set_index(['timestamp'], inplace=True)
 
-        macd, signal, hist = talib.MACD(ohlcv_candles.close.values,
-                                        fastperiod=8, slowperiod=28, signalperiod=9)
-        
+        #macd, signal, hist = talib.MACD(ohlcv_candles.close.values[::-1], # Reversed
+        #                                fastperiod=8, slowperiod=28, signalperiod=9)
+       
+        upperband, middleband, lowerband = talib.BBANDS(ohlcv_candles.close.values[::-1], 
+                timeperiod=self.params["period"], nbdevup=self.params["devfactor"], 
+                nbdevdn=self.params["devfactor"], matype=0)
         # sell
-        if hist[-2] > 0 and hist[-1] < 0:
+        print(f'UPPER: {upperband[-1]} MIDDLE:{middleband[-1]} LOWER:{lowerband[-1]}')
+        if self.close > upperband[-1]:
             return -1 
         # buy
-        elif hist[-2] < 0 and hist[-1] > 0:
+        elif self.close < lowerband[-1]:
             return 1
         # do nothing
         else:

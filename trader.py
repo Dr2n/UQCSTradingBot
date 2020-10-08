@@ -11,6 +11,7 @@ class Trader():
         self.leverage = leverage
 
         self.open_position = False
+        self.size = 500
         self.symbol = symbol
         self.position = self.client.Position.Position_get(filter=json.dumps({"symbol": self.symbol})).result()[0][0]
         self.open_position = self.position["isOpen"]
@@ -19,7 +20,10 @@ class Trader():
     def execute_trade(self):
         
         prediction = self.strategy.predict()
-        self.position = self.client.Position.Position_get(filter=json.dumps({"symbol": self.symbol})).result()[0][0]
+        try:
+            self.position = self.client.Position.Position_get(filter=json.dumps({"symbol": self.symbol})).result()[0][0]
+        except:
+            pass
         self.open_position = self.position["isOpen"]
         self.exposure = self.position["currentQty"]
 
@@ -96,7 +100,7 @@ class Trader():
             response = self.client.Order.Order_new(
                         symbol=self.symbol,
                         side=side,
-                        orderQty=self.money_to_trade * self.leverage,
+                        orderQty=self.size,
                     ).result()
             self.open_position = True
         except Exception:
